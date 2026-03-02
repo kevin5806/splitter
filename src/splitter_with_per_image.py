@@ -50,7 +50,7 @@ HELP_TEXT = (
     "- Selecting an item updates preview and per-image settings.\n"
     "\n"
     "Global Default Settings\n"
-    "- Configure grid, crop margin, and output paths.\n"
+    "- Configure grid, orientation, crop margin, and output paths.\n"
     "- Set Output Quality to control final sharpness and file size.\n"
     "- For maximum quality use: Massima (consigliata).\n"
     "- Output Location defines the base directory for generated folders.\n"
@@ -58,6 +58,7 @@ HELP_TEXT = (
     "\n"
     "Per-Image Settings\n"
     "- Enable Use custom settings for this image to override global defaults.\n"
+    "- You can force crop orientation: Auto, Orizzontale, or Verticale.\n"
     "- Click Apply to Image to save overrides for the selected file.\n"
     "- Click Reset to Defaults to remove overrides.\n"
     "\n"
@@ -120,6 +121,9 @@ def build_diagnostic_summary(diagnostics):
     method = diagnostics.get("method")
     if method:
         parts.append(f"method={method}")
+    orientation_mode = diagnostics.get("orientation_mode")
+    if orientation_mode:
+        parts.append(f"orientation={orientation_mode}")
 
     malformed = int(diagnostics.get("malformed_cell_flags", 0) or 0)
     offscreen = int(diagnostics.get("offscreen_cells", 0) or 0)
@@ -160,6 +164,19 @@ class ImageSplitterGUI:
         QUALITY_BALANCED: 2048,  # Downscale to reduce output weight
         QUALITY_COMPACT: 1024,   # Smaller files for quick usage
     }
+    ORIENTATION_AUTO = "Auto"
+    ORIENTATION_HORIZONTAL = "Orizzontale"
+    ORIENTATION_VERTICAL = "Verticale"
+    ORIENTATION_TO_VALUE = {
+        ORIENTATION_AUTO: "auto",
+        ORIENTATION_HORIZONTAL: "horizontal",
+        ORIENTATION_VERTICAL: "vertical",
+    }
+    VALUE_TO_ORIENTATION = {
+        "auto": ORIENTATION_AUTO,
+        "horizontal": ORIENTATION_HORIZONTAL,
+        "vertical": ORIENTATION_VERTICAL,
+    }
     
     def __init__(self, root):
         self.root = root
@@ -185,7 +202,8 @@ class ImageSplitterGUI:
         """Load tooltip overrides from JSON configuration file."""
         if TOOLTIP_CONFIG_FILE.exists():
             try:
-                with TOOLTIP_CONFIG_FILE.open("r", encoding="utf-8") as handle:
+                # utf-8-sig handles optional BOM from editors on Windows.
+                with TOOLTIP_CONFIG_FILE.open("r", encoding="utf-8-sig") as handle:
                     data = json.load(handle)
                 if isinstance(data, dict):
                     self.tooltips = {str(key): str(value) for key, value in data.items()}
@@ -224,6 +242,7 @@ class ImageSplitterGUI:
 
         # Reset global defaults
         self.global_quality_mode_var.set(self.QUALITY_MAX)
+        self.global_orientation_mode_var.set(self.ORIENTATION_AUTO)
         self.global_images_across_var.set(1)
         self.global_images_high_var.set(1)
         self.global_crop_margin_var.set("0")
@@ -233,6 +252,7 @@ class ImageSplitterGUI:
         # Reset per-image defaults
         self.images_across_var.set(1)
         self.images_high_var.set(1)
+        self.orientation_mode_var.set(self.global_orientation_mode_var.get())
         self.crop_margin_var.set("0")
         self.folder_name_var.set("")
         self.use_custom_settings_var.set(False)
@@ -266,6 +286,7 @@ class ImageSplitterGUI:
         """Initialize tkinter variables."""
         # Global defaults
         self.global_quality_mode_var = StringVar(value=self.QUALITY_MAX)
+        self.global_orientation_mode_var = StringVar(value=self.ORIENTATION_AUTO)
         self.global_folder_name_var = StringVar()
         self.global_output_base_dir_var = StringVar()
         self.global_crop_margin_var = StringVar(value="0")
@@ -277,6 +298,7 @@ class ImageSplitterGUI:
         self.crop_margin_var = StringVar(value="0")
         self.images_across_var = IntVar(value=1)
         self.images_high_var = IntVar(value=1)
+        self.orientation_mode_var = StringVar(value=self.ORIENTATION_AUTO)
         self.use_custom_settings_var = BooleanVar(value=False)
         
         self.status_var = StringVar(value="Ready")
@@ -424,9 +446,24 @@ class ImageSplitterGUI:
         self.quality_hint_label.grid(row=1, column=0, columnspan=2, sticky='w', pady=(2, 6))
         settings_frame.bind('<Configure>', self.on_global_settings_resize)
 
+        ttk.Label(settings_frame, text="Orientation:").grid(row=2, column=0, sticky='w')
+        orientation_combo = ttk.Combobox(
+            settings_frame,
+            textvariable=self.global_orientation_mode_var,
+            values=[self.ORIENTATION_AUTO, self.ORIENTATION_HORIZONTAL, self.ORIENTATION_VERTICAL],
+            state='readonly',
+            width=24,
+        )
+        orientation_combo.grid(row=2, column=1, sticky='w')
+        self.create_tooltip(
+            orientation_combo,
+            "global_orientation_mode",
+            "Force exported crop orientation: Auto, Orizzontale, or Verticale."
+        )
+
         # Grid options
         grid_frame = ttk.Frame(settings_frame)
-        grid_frame.grid(row=2, column=0, columnspan=2, sticky='ew', pady=(0, 5))
+        grid_frame.grid(row=3, column=0, columnspan=2, sticky='ew', pady=(0, 5))
         
         ttk.Label(grid_frame, text="Across:").pack(side='left', padx=(0, 5))
         global_across_spin = ttk.Spinbox(grid_frame, from_=1, to=10, textvariable=self.global_images_across_var, width=8)
@@ -438,23 +475,23 @@ class ImageSplitterGUI:
         global_high_spin.pack(side='left')
         self.create_tooltip(global_high_spin, "global_images_high", "Number of rows to split each image into")
         
-        ttk.Label(settings_frame, text="Crop Margin (px):").grid(row=3, column=0, sticky='w', pady=(5, 0))
+        ttk.Label(settings_frame, text="Crop Margin (px):").grid(row=4, column=0, sticky='w', pady=(5, 0))
         self.global_crop_margin_entry = ttk.Entry(settings_frame, textvariable=self.global_crop_margin_var, width=12)
-        self.global_crop_margin_entry.grid(row=3, column=1, sticky='w', pady=(5, 0))
+        self.global_crop_margin_entry.grid(row=4, column=1, sticky='w', pady=(5, 0))
         self.create_tooltip(
             self.global_crop_margin_entry,
             "global_crop_margin",
             "Extra pixels added around each detected rectangle. Use 0 for no margin."
         )
 
-        ttk.Label(settings_frame, text="Output Folder:").grid(row=4, column=0, sticky='w', pady=(5, 0))
+        ttk.Label(settings_frame, text="Output Folder:").grid(row=5, column=0, sticky='w', pady=(5, 0))
         global_folder_entry = ttk.Entry(settings_frame, textvariable=self.global_folder_name_var)
-        global_folder_entry.grid(row=4, column=1, sticky='ew', pady=(5, 0))
+        global_folder_entry.grid(row=5, column=1, sticky='ew', pady=(5, 0))
         self.create_tooltip(global_folder_entry, "global_output_folder", "Optional subfolder name created inside each image's directory")
 
-        ttk.Label(settings_frame, text="Output Location:").grid(row=5, column=0, sticky='w', pady=(5, 0))
+        ttk.Label(settings_frame, text="Output Location:").grid(row=6, column=0, sticky='w', pady=(5, 0))
         output_location_frame = ttk.Frame(settings_frame)
-        output_location_frame.grid(row=5, column=1, sticky='ew', pady=(5, 0))
+        output_location_frame.grid(row=6, column=1, sticky='ew', pady=(5, 0))
         output_location_frame.grid_columnconfigure(0, weight=1)
 
         output_location_entry = ttk.Entry(output_location_frame, textvariable=self.global_output_base_dir_var)
@@ -524,6 +561,22 @@ class ImageSplitterGUI:
                                      textvariable=self.images_high_var, width=15)
         self.high_entry.grid(row=row, column=1, sticky='w', pady=2)
         self.create_tooltip(self.high_entry, "per_image_images_high", "Number of rows to slice for this image")
+
+        row += 1
+        ttk.Label(self.settings_container, text="Orientation:").grid(row=row, column=0, sticky='w', pady=2)
+        self.orientation_combo = ttk.Combobox(
+            self.settings_container,
+            textvariable=self.orientation_mode_var,
+            values=[self.ORIENTATION_AUTO, self.ORIENTATION_HORIZONTAL, self.ORIENTATION_VERTICAL],
+            state='readonly',
+            width=15,
+        )
+        self.orientation_combo.grid(row=row, column=1, sticky='w', pady=2)
+        self.create_tooltip(
+            self.orientation_combo,
+            "per_image_orientation_mode",
+            "Force crop orientation for this image only: Auto, Orizzontale, or Verticale."
+        )
 
         row += 1
         ttk.Label(self.settings_container, text="Crop Margin (px):").grid(row=row, column=0, sticky='w', pady=2)
@@ -710,12 +763,18 @@ class ImageSplitterGUI:
             self.use_custom_settings_var.set(True)
             self.images_across_var.set(img_item.images_across or self.global_images_across_var.get())
             self.images_high_var.set(img_item.images_high or self.global_images_high_var.get())
+            self.orientation_mode_var.set(
+                self._orientation_label_from_value(
+                    img_item.orientation_mode or self._resolve_orientation_mode(self.global_orientation_mode_var.get())
+                )
+            )
             self.crop_margin_var.set(str(img_item.crop_margin if img_item.crop_margin is not None else self.global_crop_margin_var.get()))
             self.folder_name_var.set(img_item.custom_folder or self.global_folder_name_var.get())
         else:
             self.use_custom_settings_var.set(False)
             self.images_across_var.set(self.global_images_across_var.get())
             self.images_high_var.set(self.global_images_high_var.get())
+            self.orientation_mode_var.set(self.global_orientation_mode_var.get())
             self.crop_margin_var.set(self.global_crop_margin_var.get())
             self.folder_name_var.set(self.global_folder_name_var.get())
             
@@ -733,6 +792,7 @@ class ImageSplitterGUI:
             img_item.images_high = self.images_high_var.get()
             img_item.maintain_format = None
             img_item.smart_grid = None
+            img_item.orientation_mode = self._resolve_orientation_mode(self.orientation_mode_var.get())
             margin = self.crop_margin_var.get().strip()
             img_item.crop_margin = int(margin) if margin.isdigit() else None
             
@@ -756,6 +816,7 @@ class ImageSplitterGUI:
         img_item.images_high = None
         img_item.maintain_format = None
         img_item.smart_grid = None
+        img_item.orientation_mode = None
         img_item.crop_margin = None
         img_item.custom_folder = None
         
@@ -827,17 +888,27 @@ class ImageSplitterGUI:
         mode = self.global_quality_mode_var.get()
         return self.QUALITY_TO_SIZE.get(mode, None)
 
+    def _resolve_orientation_mode(self, label):
+        return self.ORIENTATION_TO_VALUE.get(label, "auto")
+
+    def _orientation_label_from_value(self, value):
+        normalized = str(value or "auto").strip().lower()
+        return self.VALUE_TO_ORIENTATION.get(normalized, self.ORIENTATION_AUTO)
+
     def get_effective_image_settings(self, img_item):
         """Resolve effective settings for one image (global + per-image overrides)."""
         output_size = self._resolve_output_size()
+        global_orientation = self._resolve_orientation_mode(self.global_orientation_mode_var.get())
         global_margin_text = self.global_crop_margin_var.get().strip()
         global_margin = int(global_margin_text) if global_margin_text.isdigit() else 0
         crop_margin = img_item.crop_margin if img_item.crop_margin is not None else global_margin
+        orientation_mode = img_item.orientation_mode if img_item.orientation_mode is not None else global_orientation
 
         return {
             "output_size": output_size,
             "across": img_item.images_across or self.global_images_across_var.get(),
             "high": img_item.images_high or self.global_images_high_var.get(),
+            "orientation_mode": orientation_mode,
             "folder": img_item.custom_folder or self.global_folder_name_var.get(),
             "format_setting": False,
             "smart_grid_setting": True,
@@ -1186,6 +1257,7 @@ class ImageSplitterGUI:
                         timestamp,
                         output_base_dir=settings["output_base_dir"],
                         crop_margin=settings["crop_margin"],
+                        orientation_mode=settings["orientation_mode"],
                     )
                     processed += 1
                     diagnostics = self._load_conversion_diagnostics(output_folder, img_item.file_path.stem)
@@ -1291,6 +1363,12 @@ def main():
         default='max',
         help="Output quality mode: max keeps native crop size, balanced=2048, compact=1024",
     )
+    parser.add_argument(
+        '--orientation',
+        choices=['auto', 'horizontal', 'vertical'],
+        default='auto',
+        help="Force crop orientation: auto, horizontal, or vertical",
+    )
     parser.add_argument('--crop-margin', type=int, default=0, help="Extra crop margin in pixels around each detected cell (default: 0)")
     parser.add_argument('--folder', type=str, help="Custom output folder name (optional)")
     parser.add_argument('--output-dir', type=str, help="Base output directory (optional)")
@@ -1311,6 +1389,7 @@ def main():
         maintain_format = False
         smart_grid = True
         crop_margin = args.crop_margin
+        orientation_mode = args.orientation
         output_base_dir = args.output_dir
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -1328,6 +1407,7 @@ def main():
                 timestamp,
                 output_base_dir=output_base_dir,
                 crop_margin=crop_margin,
+                orientation_mode=orientation_mode,
             )
         print("Processing completed!")
     else:

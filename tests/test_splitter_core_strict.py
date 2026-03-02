@@ -232,6 +232,87 @@ class SplitterCoreStrictTests(unittest.TestCase):
             with Image.open(out / "A1.png") as crop:
                 self.assertEqual(crop.size, (40, 30))
 
+    def test_orientation_mode_horizontal_rotates_vertical_crop(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            image_path = tmp_path / "sheet.png"
+            _save_solid_image(image_path, size=(40, 80), image_format="PNG")
+
+            out = core.split_and_resize_image(
+                image_path=str(image_path),
+                images_across=1,
+                images_high=1,
+                output_size=None,
+                custom_folder="cuts_orient_h",
+                maintain_format=True,
+                smart_grid=False,
+                timestamp="20260302_172727",
+                output_base_dir=tmp_path / "out",
+                crop_margin=0,
+                orientation_mode="horizontal",
+            )
+
+            with Image.open(out / "A1.png") as crop:
+                self.assertEqual(crop.size, (80, 40))
+
+            diagnostics = _read_diagnostics(out / "sheet_diagnostics.json")
+            self.assertEqual(diagnostics["orientation_mode"], "horizontal")
+            self.assertEqual(diagnostics["orientation_rotated_crops"], 1)
+
+    def test_orientation_mode_vertical_rotates_horizontal_crop(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            image_path = tmp_path / "sheet.png"
+            _save_solid_image(image_path, size=(80, 40), image_format="PNG")
+
+            out = core.split_and_resize_image(
+                image_path=str(image_path),
+                images_across=1,
+                images_high=1,
+                output_size=None,
+                custom_folder="cuts_orient_v",
+                maintain_format=True,
+                smart_grid=False,
+                timestamp="20260302_173737",
+                output_base_dir=tmp_path / "out",
+                crop_margin=0,
+                orientation_mode="vertical",
+            )
+
+            with Image.open(out / "A1.png") as crop:
+                self.assertEqual(crop.size, (40, 80))
+
+            diagnostics = _read_diagnostics(out / "sheet_diagnostics.json")
+            self.assertEqual(diagnostics["orientation_mode"], "vertical")
+            self.assertEqual(diagnostics["orientation_rotated_crops"], 1)
+
+    def test_orientation_mode_auto_does_not_force_rotation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            image_path = tmp_path / "sheet.png"
+            _save_solid_image(image_path, size=(80, 40), image_format="PNG")
+
+            out = core.split_and_resize_image(
+                image_path=str(image_path),
+                images_across=1,
+                images_high=1,
+                output_size=None,
+                custom_folder="cuts_orient_auto",
+                maintain_format=True,
+                smart_grid=False,
+                timestamp="20260302_174747",
+                output_base_dir=tmp_path / "out",
+                crop_margin=0,
+                orientation_mode="auto",
+            )
+
+            with Image.open(out / "A1.png") as crop:
+                self.assertEqual(crop.size, (80, 40))
+
+            diagnostics = _read_diagnostics(out / "sheet_diagnostics.json")
+            self.assertEqual(diagnostics["orientation_mode"], "auto")
+            self.assertEqual(diagnostics["orientation_rotated_crops"], 0)
+
     def test_split_and_resize_margin_zero_trims_white_border_artifacts(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

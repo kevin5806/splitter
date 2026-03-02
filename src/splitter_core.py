@@ -949,6 +949,40 @@ def _auto_straighten_crop(image, min_angle=0.35, max_angle=10.0):
     return best_image, angle, True
 
 
+def _normalize_orientation_mode(orientation_mode):
+    raw = str(orientation_mode or "auto").strip().lower()
+    aliases = {
+        "auto": "auto",
+        "automatic": "auto",
+        "orizzontale": "horizontal",
+        "horizontal": "horizontal",
+        "landscape": "horizontal",
+        "verticale": "vertical",
+        "vertical": "vertical",
+        "portrait": "vertical",
+    }
+    return aliases.get(raw, "auto")
+
+
+def _enforce_crop_orientation(image, orientation_mode):
+    """
+    Enforce requested crop orientation.
+
+    Returns:
+        (image, normalized_mode, rotated_bool)
+    """
+    mode = _normalize_orientation_mode(orientation_mode)
+    width, height = image.size
+    if width <= 0 or height <= 0:
+        return image, mode, False
+
+    if mode == "horizontal" and height > width:
+        return image.transpose(Image.Transpose.ROTATE_90), mode, True
+    if mode == "vertical" and width > height:
+        return image.transpose(Image.Transpose.ROTATE_90), mode, True
+    return image, mode, False
+
+
 def split_and_resize_image(
     image_path,
     images_across,
@@ -961,6 +995,7 @@ def split_and_resize_image(
     output_base_dir=None,
     progress_callback=None,
     crop_margin=0,
+    orientation_mode="auto",
 ):
     """
     Split and resize image, naming crops by short tracking codes (A1, A2, ...).
@@ -980,6 +1015,7 @@ def split_and_resize_image(
     image_path = Path(image_path)
 
     crop_margin = int(max(0, crop_margin or 0))
+    orientation_mode = _normalize_orientation_mode(orientation_mode)
 
     with Image.open(image_path) as img:
         img_width, img_height = img.size
@@ -1055,6 +1091,7 @@ def split_and_resize_image(
         white_border_trimmed_crops = 0
         max_white_border_trim_px = 0
         white_border_residual_crops = 0
+        orientation_rotated_crops = 0
 
         for idx, code in enumerate(codes):
             crop_box = effective_crop_boxes[idx]
@@ -1086,6 +1123,10 @@ def split_and_resize_image(
                 if _has_strong_white_border(small_img):
                     white_border_residual_crops += 1
 
+            small_img, _, orientation_rotated = _enforce_crop_orientation(small_img, orientation_mode)
+            if orientation_rotated:
+                orientation_rotated_crops += 1
+
             if output_size is not None and int(output_size) > 0:
                 small_img = resize_image_keep_aspect_ratio(small_img, int(output_size))
 
@@ -1116,6 +1157,8 @@ def split_and_resize_image(
         diagnostics["max_overlap_before_correction_px"] = int(max_overlap_before_px)
         diagnostics["remaining_overlap_pairs"] = int(remaining_overlap_pairs)
         diagnostics["remaining_max_overlap_px"] = int(remaining_overlap_max_px)
+        diagnostics["orientation_mode"] = str(orientation_mode)
+        diagnostics["orientation_rotated_crops"] = int(orientation_rotated_crops)
         _save_diagnostics(output_folder, image_path.stem, diagnostics, total_parts, smart_grid_requested=smart_grid)
 
     return output_folder

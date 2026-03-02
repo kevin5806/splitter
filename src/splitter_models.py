@@ -14,6 +14,7 @@ class ImageItem:
     maintain_format: Optional[bool] = None
     smart_grid: Optional[bool] = None
     crop_margin: Optional[int] = None
+    orientation_mode: Optional[str] = None
     custom_folder: Optional[str] = None
 
     def __post_init__(self):
@@ -36,6 +37,7 @@ class ImageItem:
                 self.maintain_format is not None,
                 self.smart_grid is not None,
                 self.crop_margin is not None,
+                self.orientation_mode is not None,
                 has_custom_folder,
             ]
         )
@@ -63,6 +65,14 @@ class ImageItem:
 
         if self.crop_margin is not None:
             parts.append(f"Margin: {self.crop_margin}px")
+
+        if self.orientation_mode is not None:
+            orientation_map = {
+                "auto": "Auto orientation",
+                "horizontal": "Horizontal",
+                "vertical": "Vertical",
+            }
+            parts.append(f"Orientation: {orientation_map.get(str(self.orientation_mode).lower(), self.orientation_mode)}")
 
         if self.custom_folder and self.custom_folder.strip():
             parts.append(f"Folder: {self.custom_folder}")

@@ -23,6 +23,11 @@ class ImageItemModelTests(unittest.TestCase):
         self.assertIn("sample.jpg", item.get_display_name())
         self.assertNotEqual(item.get_display_name(), "sample.jpg")
 
+    def test_orientation_alone_marks_custom_and_summary(self):
+        item = ImageItem("sample.jpg", orientation_mode="vertical")
+        self.assertTrue(item.has_custom_settings())
+        self.assertIn("Orientation: Vertical", item.get_settings_summary())
+
     def test_whitespace_folder_is_not_treated_as_custom(self):
         item = ImageItem("sample.jpg", custom_folder="   ")
         self.assertFalse(item.has_custom_settings())
@@ -37,6 +42,7 @@ class ImageItemModelTests(unittest.TestCase):
             maintain_format=True,
             smart_grid=False,
             crop_margin=6,
+            orientation_mode="horizontal",
             custom_folder="pack_a",
         )
         summary = item.get_settings_summary()
@@ -45,6 +51,7 @@ class ImageItemModelTests(unittest.TestCase):
         self.assertIn("Keep format", summary)
         self.assertIn("Classic grid", summary)
         self.assertIn("Margin: 6px", summary)
+        self.assertIn("Orientation: Horizontal", summary)
         self.assertIn("Folder: pack_a", summary)
 
 

@@ -240,6 +240,7 @@ class SplitterUnitTests(unittest.TestCase):
     def test_build_diagnostic_summary_contains_key_signals(self):
         diagnostics = {
             "method": "direct_detected",
+            "orientation_mode": "horizontal",
             "malformed_cell_flags": 2,
             "offscreen_cells": 1,
             "white_border_trimmed_crops": 3,
@@ -250,6 +251,7 @@ class SplitterUnitTests(unittest.TestCase):
         }
         summary = splitter.build_diagnostic_summary(diagnostics)
         self.assertIn("method=direct_detected", summary)
+        self.assertIn("orientation=horizontal", summary)
         self.assertIn("malformed=2", summary)
         self.assertIn("offscreen=1", summary)
         self.assertIn("white_trim=3", summary)

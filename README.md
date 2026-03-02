@@ -27,6 +27,7 @@ dist\Splitter.exe
 - Smart grid detection for imperfect scanned sheets
 - Smart grid supports non-uniform block sizes (different cell widths/heights)
 - Clear output quality control (`Massima`, `Bilanciata`, `Compatta`)
+- Orientation selector (`Auto`, `Orizzontale`, `Verticale`) global and per-image
 - Configurable crop margin in pixels (global, per-image, or CLI)
 - Automatic crop skew control to reduce tilted cut results
 - Post-conversion report window with per-file status, score, method, and diagnostics summary
@@ -133,10 +134,10 @@ python -m pip install -r requirements-dev.txt
 python -m pytest -v --cov=src.splitter_with_per_image --cov=src.splitter_core --cov=src.splitter_models --cov-report=term-missing tests
 ```
 
-CLI example with margin:
+CLI example with margin and forced orientation:
 
 ```bash
-python splitter_with_per_image.py sheet.jpg --quality max --across 4 --high 4 --crop-margin 12
+python splitter_with_per_image.py sheet.jpg --quality max --orientation horizontal --across 4 --high 4 --crop-margin 12
 ```
 
 ---

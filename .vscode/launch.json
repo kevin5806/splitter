@@ -26,6 +26,8 @@
         "4",
         "--quality",
         "max",
+        "--orientation",
+        "auto",
         "--crop-margin",
         "0"
       ]
