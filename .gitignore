@@ -1,0 +1,45 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Coverage and test artifacts
+.coverage
+coverage.xml
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.spec
+
+# Local datasets and sample outputs
+AllSamples/
+*_samples/
+samples/
+local_data/
+test-grid/
+tests/fixtures/
+tests/data/
+tests/_artifacts/
+*_diagnostics.json
+test-*.jpg
+test-*.jpeg
+test-*.png
+00001-*.jpg
+00001-*.jpeg
+NKG*.jpg
+NKG*.jpeg
+
+# OS-specific files
+Thumbs.db
+.DS_Store

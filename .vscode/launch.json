@@ -1,0 +1,60 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Splitter: GUI",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/splitter_with_per_image.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true
+    },
+    {
+      "name": "Splitter: CLI (edit args)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/splitter_with_per_image.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true,
+      "args": [
+        "PATH_TO_IMAGE.jpg",
+        "--across",
+        "4",
+        "--high",
+        "4",
+        "--quality",
+        "max",
+        "--crop-margin",
+        "0"
+      ]
+    },
+    {
+      "name": "Splitter: Tests (all)",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true,
+      "args": [
+        "-q",
+        "tests"
+      ]
+    },
+    {
+      "name": "Splitter: Test file corrente",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true,
+      "args": [
+        "-q",
+        "${file}"
+      ]
+    }
+  ]
+}
